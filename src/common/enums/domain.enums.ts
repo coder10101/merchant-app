@@ -26,3 +26,9 @@ export enum BusinessType {
   LLC = 'LLC',
   CORPORATION = 'CORPORATION',
 }
+
+export enum ReviewDecision {
+  APPROVE = 'APPROVE',
+  REJECT = 'REJECT',
+  REQUEST_INFO = 'REQUEST_INFO',
+}
