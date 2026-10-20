@@ -95,4 +95,14 @@ describe('Merchant Applications (E2E Integration & Security)', () => {
       .send({ businessName: 'Random Name' })
       .expect(403);
   });
+
+  // Sales 1 user can view their own application
+  it('Sales 1 user can view their own application details', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/applications/${createdAppId}`)
+      .set('Authorization', `Bearer ${sales1Token}`)
+      .expect(200);
+    expect(res.body.id).toBe(createdAppId);
+    expect(res.body.businessName).toBe('Apex E2E Roasters');
+  });
 });
