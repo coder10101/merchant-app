@@ -24,6 +24,16 @@ export class ApplicationsService {
     private readonly applicationRepository: Repository<MerchantApplication>,
   ) {}
 
+
+  private maskSensitiveFields(
+    application: MerchantApplication,
+  ): MerchantApplication {
+    if (application.taxId) {
+      application.taxId = `***-**-${application.taxId.slice(-4)}`;
+    }
+    return application;
+  }
+
   async create(
     createDto: CreateApplicationDto,
     user: AuthenticatedUser,
@@ -36,12 +46,7 @@ export class ApplicationsService {
     });
 
     const saved = await this.applicationRepository.save(application);
-
-    if (saved.taxId) {
-      saved.taxId = `***-**-${saved.taxId.slice(-4)}`;
-    }
-
-    return saved;
+    return this.maskSensitiveFields(saved);
   }
 
   async findAll(query: QueryApplicationDto, user: AuthenticatedUser) {
@@ -69,15 +74,8 @@ export class ApplicationsService {
 
     const [data, total] = await queryBuilder.getManyAndCount();
 
-    const sanitizedData = data.map((app) => {
-      if (app.taxId) {
-        app.taxId = `***-**-${app.taxId.slice(-4)}`;
-      }
-      return app;
-    });
-
     return {
-      data: sanitizedData,
+      data: data.map((app) => this.maskSensitiveFields(app)),
       total,
       page,
       limit,
@@ -96,19 +94,19 @@ export class ApplicationsService {
         assignedReviewer: true,
       },
     });
+
     if (!application) {
       throw new NotFoundException(`Application with ID ${id} not found`);
     }
-    //  SALES useer cannot view applications created by others
+
+    // SALES useer cannot view applications created by others
     if (user.role === UserRole.SALES && application.createdById !== user.id) {
       throw new ForbiddenException(
         'Access denied: You do not have permission to view this application',
       );
     }
-    if (application.taxId) {
-      application.taxId = `***-**-${application.taxId.slice(-4)}`;
-    }
-    return application;
+
+    return this.maskSensitiveFields(application);
   }
 
   async update(
@@ -119,15 +117,18 @@ export class ApplicationsService {
     const application = await this.applicationRepository.findOne({
       where: { id },
     });
+
     if (!application) {
       throw new NotFoundException(`Application with ID ${id} not found`);
     }
+
     // SALES user cannot modify applications created by others
     if (user.role === UserRole.SALES && application.createdById !== user.id) {
       throw new ForbiddenException(
         'Access denied: You do not have permission to modify this application',
       );
     }
+
     // Edits only allowed in DRAFT or ACTION_REQUIRED
     const editableStatuses = [
       ApplicationStatus.DRAFT,
@@ -138,12 +139,9 @@ export class ApplicationsService {
         `Application cannot be modified in status "${application.status}". Edits are only permitted in DRAFT or ACTION_REQUIRED.`,
       );
     }
+
     this.applicationRepository.merge(application, updateDto);
-    
     const updated = await this.applicationRepository.save(application);
-    if (updated.taxId) {
-      updated.taxId = `***-**-${updated.taxId.slice(-4)}`;
-    }
-    return updated;
+    return this.maskSensitiveFields(updated);
   }
 }
