@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { RiskProcessor } from './risk.processor';
+import { MerchantApplication } from '../database/entities/merchant-application.entity';
+import { RiskAssessment } from '../database/entities/risk-assessment.entity';
 
 export const RISK_QUEUE_NAME = 'risk-evaluation';
 
@@ -21,6 +24,7 @@ export const RISK_QUEUE_NAME = 'risk-evaluation';
     BullModule.registerQueue({
       name: RISK_QUEUE_NAME,
     }),
+    TypeOrmModule.forFeature([MerchantApplication, RiskAssessment]),
   ],
   providers: [RiskProcessor],
   exports: [BullModule],
