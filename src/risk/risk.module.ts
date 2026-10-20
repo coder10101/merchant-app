@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { ConfigService } from '@nestjs/config';
+import { RiskProcessor } from './risk.processor';
 
 export const RISK_QUEUE_NAME = 'risk-evaluation';
 
@@ -21,6 +22,7 @@ export const RISK_QUEUE_NAME = 'risk-evaluation';
       name: RISK_QUEUE_NAME,
     }),
   ],
+  providers: [RiskProcessor],
   exports: [BullModule],
 })
 export class RiskModule {}
