@@ -38,3 +38,11 @@ export enum RiskTier {
   MEDIUM = 'MEDIUM',
   HIGH = 'HIGH',
 }
+
+export enum AuditAction {
+  CREATED = 'CREATED',
+  SUBMITTED = 'SUBMITTED',
+  ASSIGNED = 'ASSIGNED',
+  DECISION_RECORDED = 'DECISION_RECORDED',
+  RISK_PROCESSED = 'RISK_PROCESSED',
+}
