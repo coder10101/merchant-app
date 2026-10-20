@@ -32,3 +32,9 @@ export enum ReviewDecision {
   REJECT = 'REJECT',
   REQUEST_INFO = 'REQUEST_INFO',
 }
+
+export enum RiskTier {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+}
