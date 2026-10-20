@@ -24,7 +24,6 @@ export class ApplicationsService {
     private readonly applicationRepository: Repository<MerchantApplication>,
   ) {}
 
-
   private maskSensitiveFields(
     application: MerchantApplication,
   ): MerchantApplication {
@@ -143,5 +142,37 @@ export class ApplicationsService {
     this.applicationRepository.merge(application, updateDto);
     const updated = await this.applicationRepository.save(application);
     return this.maskSensitiveFields(updated);
+  }
+
+  async submit(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<MerchantApplication> {
+    const application = await this.applicationRepository.findOne({
+      where: { id },
+    });
+    if (!application) {
+      throw new NotFoundException(`Application with ID ${id} not found`);
+    }
+    // only creator can submit
+    if (user.role === UserRole.SALES && application.createdById !== user.id) {
+      throw new ForbiddenException(
+        'Access denied: You can only submit your own applications',
+      );
+    }
+    const submittableStatuses = [
+      ApplicationStatus.DRAFT,
+      ApplicationStatus.ACTION_REQUIRED,
+    ];
+    if (!submittableStatuses.includes(application.status)) {
+      throw new BadRequestException(
+        `Cannot submit application in status "${application.status}". Application must be DRAFT or ACTION_REQUIRED.`,
+      );
+    }
+    application.status = ApplicationStatus.SUBMITTED;
+    application.riskStatus = RiskStatus.PENDING;
+    application.submittedAt = new Date();
+    const saved = await this.applicationRepository.save(application);
+    return this.maskSensitiveFields(saved);
   }
 }

@@ -110,4 +110,22 @@ export class ApplicationsController {
   ) {
     return this.applicationsService.update(id, updateDto, user);
   }
+
+  @Post(':id/submit')
+  @Roles(UserRole.SALES, UserRole.ADMIN)
+  @ApiOperation({ summary: 'Submit an application for review' })
+  @ApiResponse({
+    status: 200,
+    description: 'Application submitted successfully',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Application is not in a submittable state',
+  })
+  async submit(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.applicationsService.submit(id, user);
+  }
 }
