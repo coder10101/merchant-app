@@ -3,3 +3,26 @@ export enum UserRole {
   REVIEWER = 'REVIEWER',
   SALES = 'SALES',
 }
+
+export enum ApplicationStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  UNDER_REVIEW = 'UNDER_REVIEW',
+  ACTION_REQUIRED = 'ACTION_REQUIRED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+}
+
+export enum RiskStatus {
+  NOT_STARTED = 'NOT_STARTED',
+  PENDING = 'PENDING',
+  PASSED = 'PASSED',
+  FLAGGED = 'FLAGGED',
+  FAILED = 'FAILED',
+}
+export enum BusinessType {
+  SOLE_PROPRIETORSHIP = 'SOLE_PROPRIETORSHIP',
+  PARTNERSHIP = 'PARTNERSHIP',
+  LLC = 'LLC',
+  CORPORATION = 'CORPORATION',
+}
