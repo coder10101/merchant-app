@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -14,6 +15,7 @@ import {
   UserRole,
 } from '../common/enums/domain.enums';
 import { QueryApplicationDto } from './dto/query-application.dto';
+import { UpdateApplicationDto } from './dto/update-application.dto';
 
 @Injectable()
 export class ApplicationsService {
@@ -107,5 +109,41 @@ export class ApplicationsService {
       application.taxId = `***-**-${application.taxId.slice(-4)}`;
     }
     return application;
+  }
+
+  async update(
+    id: string,
+    updateDto: UpdateApplicationDto,
+    user: AuthenticatedUser,
+  ): Promise<MerchantApplication> {
+    const application = await this.applicationRepository.findOne({
+      where: { id },
+    });
+    if (!application) {
+      throw new NotFoundException(`Application with ID ${id} not found`);
+    }
+    // SALES user cannot modify applications created by others
+    if (user.role === UserRole.SALES && application.createdById !== user.id) {
+      throw new ForbiddenException(
+        'Access denied: You do not have permission to modify this application',
+      );
+    }
+    // Edits only allowed in DRAFT or ACTION_REQUIRED
+    const editableStatuses = [
+      ApplicationStatus.DRAFT,
+      ApplicationStatus.ACTION_REQUIRED,
+    ];
+    if (!editableStatuses.includes(application.status)) {
+      throw new BadRequestException(
+        `Application cannot be modified in status "${application.status}". Edits are only permitted in DRAFT or ACTION_REQUIRED.`,
+      );
+    }
+    this.applicationRepository.merge(application, updateDto);
+    
+    const updated = await this.applicationRepository.save(application);
+    if (updated.taxId) {
+      updated.taxId = `***-**-${updated.taxId.slice(-4)}`;
+    }
+    return updated;
   }
 }

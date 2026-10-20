@@ -6,6 +6,7 @@ import {
   Get,
   Query,
   Param,
+  Patch,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -22,6 +23,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { UserRole } from '../common/enums/domain.enums';
 import { QueryApplicationDto } from './dto/query-application.dto';
+import { UpdateApplicationDto } from './dto/update-application.dto';
 
 @ApiTags('Merchant Applications')
 @ApiBearerAuth()
@@ -84,5 +86,28 @@ export class ApplicationsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.applicationsService.findOne(id, user);
+  }
+
+  @Patch(':id')
+  @Roles(UserRole.SALES, UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Update application draft (Sales or Admin only, editable states only)',
+  })
+  @ApiResponse({ status: 200, description: 'Application updated successfully' })
+  @ApiResponse({
+    status: 400,
+    description: 'Bad Request: Application is not in an editable status',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden: Cannot edit application owned by another user',
+  })
+  async update(
+    @Param('id') id: string,
+    @Body() updateDto: UpdateApplicationDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.applicationsService.update(id, updateDto, user);
   }
 }
