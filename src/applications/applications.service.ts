@@ -21,7 +21,7 @@ import { ReviewDecisionDto } from './dto/review-decision.dto';
 import { User } from '../database/entities/user.entity';
 import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
-import { RISK_QUEUE_NAME } from '../risk/risk.module';
+import { RISK_QUEUE_NAME } from '../risk/risk.constant';
 
 @Injectable()
 export class ApplicationsService {

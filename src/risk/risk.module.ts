@@ -5,8 +5,7 @@ import { ConfigService } from '@nestjs/config';
 import { RiskProcessor } from './risk.processor';
 import { MerchantApplication } from '../database/entities/merchant-application.entity';
 import { RiskAssessment } from '../database/entities/risk-assessment.entity';
-
-export const RISK_QUEUE_NAME = 'risk-evaluation';
+import { RISK_QUEUE_NAME } from './risk.constant';
 
 @Module({
   imports: [
