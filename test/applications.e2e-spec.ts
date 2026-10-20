@@ -9,6 +9,7 @@ describe('Merchant Applications (E2E Integration & Security)', () => {
   let sales1Token: string;
   let sales2Token: string;
   let createdAppId: string;
+  let reviewerToken: string;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -35,6 +36,12 @@ describe('Merchant Applications (E2E Integration & Security)', () => {
       .post('/auth/login')
       .send({ email: 'sales2@platform.test', password: 'Password123!' });
     sales2Token = resSales2.body.accessToken;
+
+    // log in as Reviewer
+    const resReviewer = await request(app.getHttpServer())
+      .post('/auth/login')
+      .send({ email: 'reviewer@platform.test', password: 'Password123!' });
+    reviewerToken = resReviewer.body.accessToken;
   });
 
   afterAll(async () => {
@@ -120,5 +127,12 @@ describe('Merchant Applications (E2E Integration & Security)', () => {
       .send({ businessName: 'Illegal Update' })
       .expect(400);
   });
-  
+
+  it('Unassigned Reviewer must get 403 Forbidden from deciding an application', async () => {
+    await request(app.getHttpServer())
+      .post(`/applications/${createdAppId}/decision`)
+      .set('Authorization', `Bearer ${reviewerToken}`)
+      .send({ decision: 'APPROVE' })
+      .expect(403);
+  });
 });
