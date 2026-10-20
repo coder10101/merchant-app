@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { MerchantApplication } from '../database/entities/merchant-application.entity';
@@ -77,5 +81,31 @@ export class ApplicationsService {
       limit,
       totalPages: Math.ceil(total / limit),
     };
+  }
+
+  async findOne(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<MerchantApplication> {
+    const application = await this.applicationRepository.findOne({
+      where: { id },
+      relations: {
+        createdBy: true,
+        assignedReviewer: true,
+      },
+    });
+    if (!application) {
+      throw new NotFoundException(`Application with ID ${id} not found`);
+    }
+    //  SALES useer cannot view applications created by others
+    if (user.role === UserRole.SALES && application.createdById !== user.id) {
+      throw new ForbiddenException(
+        'Access denied: You do not have permission to view this application',
+      );
+    }
+    if (application.taxId) {
+      application.taxId = `***-**-${application.taxId.slice(-4)}`;
+    }
+    return application;
   }
 }

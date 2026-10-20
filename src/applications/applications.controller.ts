@@ -1,4 +1,12 @@
-import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Get,
+  Query,
+  Param,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -45,8 +53,7 @@ export class ApplicationsController {
   @Get()
   @Roles(UserRole.SALES, UserRole.REVIEWER, UserRole.ADMIN)
   @ApiOperation({
-    summary:
-      'List applications with pagination and status filtering',
+    summary: 'List applications with pagination and status filtering',
   })
   @ApiResponse({
     status: 200,
@@ -57,5 +64,25 @@ export class ApplicationsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.applicationsService.findAll(query, user);
+  }
+
+  @Get(':id')
+  @Roles(UserRole.SALES, UserRole.REVIEWER, UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Get application details by ID (enforces object-level isolation for Sales)',
+  })
+  @ApiResponse({ status: 200, description: 'Application details returned' })
+  @ApiResponse({
+    status: 403,
+    description:
+      "Forbidden: Sales user attempting to access another user's application",
+  })
+  @ApiResponse({ status: 404, description: 'Application not found' })
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.applicationsService.findOne(id, user);
   }
 }
