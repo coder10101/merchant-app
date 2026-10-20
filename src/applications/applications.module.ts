@@ -1,4 +1,15 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { MerchantApplication } from '../database/entities/merchant-application.entity';
+import { User } from '../database/entities/user.entity';
+import { ApplicationsController } from './applications.controller';
+import { ApplicationsService } from './applications.service';
+import { AuthModule } from '../auth/auth.module';
 
-@Module({})
+@Module({
+  imports: [TypeOrmModule.forFeature([MerchantApplication, User]), AuthModule],
+  controllers: [ApplicationsController],
+  providers: [ApplicationsService],
+  exports: [ApplicationsService],
+})
 export class ApplicationsModule {}
