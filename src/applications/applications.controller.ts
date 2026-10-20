@@ -24,6 +24,8 @@ import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { UserRole } from '../common/enums/domain.enums';
 import { QueryApplicationDto } from './dto/query-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
+import { ReviewDecisionDto } from './dto/review-decision.dto';
+import { AssignReviewerDto } from './dto/assign-reviewer.dto';
 
 @ApiTags('Merchant Applications')
 @ApiBearerAuth()
@@ -127,5 +129,48 @@ export class ApplicationsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.applicationsService.submit(id, user);
+  }
+
+  @Post(':id/assign')
+  @Roles(UserRole.REVIEWER, UserRole.ADMIN)
+  @ApiOperation({
+    summary: 'Assign a reviewer to an application (Reviewer or Admin only)',
+  })
+  @ApiResponse({ status: 200, description: 'Reviewer assigned successfully' })
+  async assign(
+    @Param('id') id: string,
+    @Body() assignDto: AssignReviewerDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.applicationsService.assignReviewer(
+      id,
+      assignDto.reviewerId,
+      user,
+    );
+  }
+  @Post(':id/decision')
+  @Roles(UserRole.REVIEWER, UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'Record approval, rejection, or request info (assigned Reviewer only)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Risk decision recorded successfully',
+  })
+  @ApiResponse({
+    status: 403,
+    description: 'Forbidden: Caller is not the assigned reviewer',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'Application is not in UNDER_REVIEW status',
+  })
+  async recordDecision(
+    @Param('id') id: string,
+    @Body() decisionDto: ReviewDecisionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.applicationsService.recordDecision(id, decisionDto, user);
   }
 }
