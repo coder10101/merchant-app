@@ -7,7 +7,11 @@ import { MerchantApplication } from '../database/entities/merchant-application.e
 import { User } from '../database/entities/user.entity';
 import { AuditService } from '../audit/audit.service';
 import { RISK_QUEUE_NAME } from '../risk/risk.constant';
-import { ApplicationStatus, UserRole } from '../common/enums/domain.enums';
+import {
+  ApplicationStatus,
+  ReviewDecision,
+  UserRole,
+} from '../common/enums/domain.enums';
 
 describe('ApplicationsService (Unit Tests)', () => {
   let service: ApplicationsService;
@@ -25,6 +29,17 @@ describe('ApplicationsService (Unit Tests)', () => {
     id: 'sales-2',
     email: 'sales2@platform.test',
     role: UserRole.SALES,
+  };
+
+  const mockReviewer1 = {
+    id: 'reviewer-1',
+    email: 'reviewer1@platform.test',
+    role: UserRole.REVIEWER,
+  };
+  const mockReviewer2 = {
+    id: 'reviewer-2',
+    email: 'reviewer2@platform.test',
+    role: UserRole.REVIEWER,
   };
 
   beforeEach(async () => {
@@ -123,6 +138,40 @@ describe('ApplicationsService (Unit Tests)', () => {
 
       await expect(
         service.update('app-1', { businessName: 'New Name' }, mockSalesUser1),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('Application must be in the Submitted state and can only be reviewed by the assigned reviewer', () => {
+    it('should THROW ForbiddenException when Reviewer 2 tries to decide on an application assigned to Reviewer 1', async () => {
+      mockAppRepo.findOne.mockResolvedValue({
+        id: 'app-1',
+        assignedReviewerId: mockReviewer1.id,
+        status: ApplicationStatus.UNDER_REVIEW,
+      });
+
+      await expect(
+        service.recordDecision(
+          'app-1',
+          { decision: ReviewDecision.APPROVE },
+          mockReviewer2,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('should THROW BadRequestException when attempting decision on an application not UNDER_REVIEW', async () => {
+      mockAppRepo.findOne.mockResolvedValue({
+        id: 'app-1',
+        assignedReviewerId: mockReviewer1.id,
+        status: ApplicationStatus.DRAFT,
+      });
+
+      await expect(
+        service.recordDecision(
+          'app-1',
+          { decision: ReviewDecision.APPROVE },
+          mockReviewer1,
+        ),
       ).rejects.toThrow(BadRequestException);
     });
   });
