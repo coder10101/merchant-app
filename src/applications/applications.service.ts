@@ -19,6 +19,9 @@ import { QueryApplicationDto } from './dto/query-application.dto';
 import { UpdateApplicationDto } from './dto/update-application.dto';
 import { ReviewDecisionDto } from './dto/review-decision.dto';
 import { User } from '../database/entities/user.entity';
+import { Queue } from 'bullmq';
+import { InjectQueue } from '@nestjs/bullmq';
+import { RISK_QUEUE_NAME } from '../risk/risk.module';
 
 @Injectable()
 export class ApplicationsService {
@@ -27,6 +30,8 @@ export class ApplicationsService {
     private readonly applicationRepository: Repository<MerchantApplication>,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectQueue(RISK_QUEUE_NAME)
+    private readonly riskQueue: Queue,
   ) {}
 
   private maskSensitiveFields(
@@ -178,6 +183,27 @@ export class ApplicationsService {
     application.riskStatus = RiskStatus.PENDING;
     application.submittedAt = new Date();
     const saved = await this.applicationRepository.save(application);
+
+    // bg job to evaluate risk asynchronously using BullMQ
+    await this.riskQueue.add(
+      'evaluate-merchant',
+      {
+        applicationId: saved.id,
+        businessName: saved.businessName,
+        taxId: saved.taxId,
+        monthlyVolume: saved.requestedProcessingInfo?.estimatedMonthlyVolume,
+      },
+      {
+        jobId: `risk-eval:${saved.id}:${saved.version}`, // Idempotency key
+        attempts: 3, // Retries
+        backoff: {
+          type: 'exponential',
+          delay: 2000,
+        },
+        removeOnComplete: true,
+      },
+    );
+
     return this.maskSensitiveFields(saved);
   }
 
