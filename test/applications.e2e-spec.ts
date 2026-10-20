@@ -86,4 +86,13 @@ describe('Merchant Applications (E2E Integration & Security)', () => {
       .set('Authorization', `Bearer ${sales2Token}`)
       .expect(403);
   });
+
+  // Proves Sales 2 user cannot modify Sales 1 user's application!
+  it('Sales 2 must get 403 Forbidden trying to modify Sales 1 users application', async () => {
+    await request(app.getHttpServer())
+      .patch(`/applications/${createdAppId}`)
+      .set('Authorization', `Bearer ${sales2Token}`)
+      .send({ businessName: 'Random Name' })
+      .expect(403);
+  });
 });
