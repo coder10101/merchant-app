@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Query } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -13,6 +13,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { UserRole } from '../common/enums/domain.enums';
+import { QueryApplicationDto } from './dto/query-application.dto';
 
 @ApiTags('Merchant Applications')
 @ApiBearerAuth()
@@ -39,5 +40,22 @@ export class ApplicationsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.applicationsService.create(createDto, user);
+  }
+
+  @Get()
+  @Roles(UserRole.SALES, UserRole.REVIEWER, UserRole.ADMIN)
+  @ApiOperation({
+    summary:
+      'List applications with pagination and status filtering',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Paginated list of applications returned',
+  })
+  async findAll(
+    @Query() query: QueryApplicationDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.applicationsService.findAll(query, user);
   }
 }
