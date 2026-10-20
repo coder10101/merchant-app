@@ -1,114 +1,99 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Merchant Payments & Operations Platform
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+A production-oriented merchant onboarding and payments operations backend platform built with **NestJS 10**, **TypeScript (Strict Mode)**, **PostgreSQL (TypeORM with reviewed migrations)**, **Redis**, and **BullMQ**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+# Key Features & Architecture
+- **Authentication & RBAC**: JWT token issuance, bcrypt password hashing, and role guards (`ADMIN`, `REVIEWER`, `SALES`).
+- **Strict Object-Level Authorization**:
+  - `SALES` users can view and edit **only** the applications they created.
+  - Integration tests explicitly verify that a Sales user cannot read or modify another user's application by ID (`403 Forbidden`).
+  - Only the assigned `REVIEWER` may record a risk decision on an application (`403 Forbidden` for unassigned reviewers).
+- **Finite State Machine & Concurrency Control**:
+  - Strict lifecycle transitions: `DRAFT -> SUBMITTED -> UNDER_REVIEW -> APPROVED / REJECTED`.
+  - Applications can **only** be modified in `DRAFT` or `ACTION_REQUIRED`. Edits to submitted/reviewed applications return `400 Bad Request`.
+  - Optimistic locking via TypeORM's `@VersionColumn()` to prevent lost updates under concurrent access.
+- **Asynchronous Risk Review (BullMQ & Redis)**:
+  - Submitting an application enqueues a background job via BullMQ.
+  - Worker simulates third-party KYB/fraud verification with realistic latency and risk scoring.
+  - **Idempotency**: Deterministic job keys (`risk-eval:${application.id}:${version}`) and worker-level checks prevent duplicate processing.
+  - **Resilience**: Configured with 3 retry attempts and exponential backoff.
+- **Audit Trail & Sensitive Data Protection**:
+  - Immutable audit logging in PostgreSQL (`audit_logs`) capturing entity, action, user, and state snapshots.
+  - Centralized sensitive data masking utility (`maskTaxId()`) redacting Tax IDs (`***-**-1234`).
+  - Passwords and raw tokens are excluded from entities and audit logs.
+- **OpenAPI / Swagger Documentation**: Interactive API testing sandbox at `/api/docs`.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## Quickstart (Local Development)
 
+### Prerequisites
+- Node.js 20+ (Node 24 supported)
+- Docker & Docker Compose
+
+### 1. Start Backing Infrastructure
+Spin up PostgreSQL 16 and Redis 7 in Docker:
 ```bash
-$ npm install
+docker compose up -d
 ```
 
-## Compile and run the project
-
+### 2. Install Dependencies
 ```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+npm install
 ```
 
-## Run tests
-
+### 3. Run Database Migrations
+Execute reviewed TypeORM migrations against PostgreSQL:
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+npm run migration:run
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
+### 4. Seed Test Accounts
+Preload the platform with test users:
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm run seed
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+### 5. Start the Server
+```bash
+npm run start:dev
+```
+- API running at: `http://localhost:3000`
+- Interactive Swagger documentation at: `http://localhost:3000/api/docs`
 
-## Observability
+---
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+## Pre-Seeded Test Accounts
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+All accounts share the default password: **`Password123!`**
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+| Role | Email | Purpose / Testing Scenario |
+| :--- | :--- | :--- |
+| **`ADMIN`** | `admin@platform.test` | Full operational oversight, application assignment, decisions. |
+| **`REVIEWER`** | `reviewer@platform.test` | Reviews applications, records risk decisions (`APPROVE`, `REJECT`, `REQUEST_INFO`). |
+| **`SALES`** | `sales1@platform.test` | Creates and manages draft applications (User A). |
+| **`SALES`** | `sales2@platform.test` | Separate sales agent used to verify object-level security isolation (User B). |
 
-## Resources
+---
 
-Check out a few resources that may come in handy when working with NestJS:
+## Running Automated Tests
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+### Unit Tests
+Tests core business rules, state machine invariants, and authorization logic:
+```bash
+npm test
+```
 
-## Support
+### Integration / E2E Tests (Supertest)
+Boots the full NestJS application, hits live HTTP endpoints, and **explicitly proves that authorization rules cannot be bypassed**:
+```bash
+npm run test:e2e
+```
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Engineering Process & AI Disclosure
 
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+- **System Design & Implementation**: The domain modeling, state lifecycle, object-level authorization, and Git branching workflow were directed and implemented step-by-step according to the platform specification.
+- **AI Tool Usage**: Claude was used selectively as an interactive pair-programming tool for NestJS syntax lookups, decorator references, and boilerplate scaffolding.
+- **Verification**: Every database migration, API endpoint, and authorization rule was manually verified in PostgreSQL and Swagger, and comprehensively covered by unit and E2E integration test suites.
