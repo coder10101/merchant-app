@@ -105,4 +105,20 @@ describe('Merchant Applications (E2E Integration & Security)', () => {
     expect(res.body.id).toBe(createdAppId);
     expect(res.body.businessName).toBe('Apex E2E Roasters');
   });
+
+  // Submitted application cannot be modified
+
+  it('Once submitted, application cannot be modified', async () => {
+    await request(app.getHttpServer())
+      .post(`/applications/${createdAppId}/submit`)
+      .set('Authorization', `Bearer ${sales1Token}`)
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .patch(`/applications/${createdAppId}`)
+      .set('Authorization', `Bearer ${sales1Token}`)
+      .send({ businessName: 'Illegal Update' })
+      .expect(400);
+  });
+  
 });

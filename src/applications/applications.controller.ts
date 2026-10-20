@@ -7,6 +7,8 @@ import {
   Query,
   Param,
   Patch,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -114,6 +116,7 @@ export class ApplicationsController {
   }
 
   @Post(':id/submit')
+  @HttpCode(HttpStatus.OK)
   @Roles(UserRole.SALES, UserRole.ADMIN)
   @ApiOperation({ summary: 'Submit an application for review' })
   @ApiResponse({
