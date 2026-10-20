@@ -11,6 +11,7 @@ import { CreateApplicationDto } from './dto/create-application.dto';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import {
   ApplicationStatus,
+  AuditAction,
   ReviewDecision,
   RiskStatus,
   UserRole,
@@ -22,6 +23,8 @@ import { User } from '../database/entities/user.entity';
 import { Queue } from 'bullmq';
 import { InjectQueue } from '@nestjs/bullmq';
 import { RISK_QUEUE_NAME } from '../risk/risk.constant';
+import { maskTaxId } from '../common/utils/sanitizer.util';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class ApplicationsService {
@@ -32,13 +35,14 @@ export class ApplicationsService {
     private readonly userRepository: Repository<User>,
     @InjectQueue(RISK_QUEUE_NAME)
     private readonly riskQueue: Queue,
+    private readonly auditService: AuditService,
   ) {}
 
   private maskSensitiveFields(
     application: MerchantApplication,
   ): MerchantApplication {
     if (application.taxId) {
-      application.taxId = `***-**-${application.taxId.slice(-4)}`;
+      application.taxId = maskTaxId(application.taxId);
     }
     return application;
   }
@@ -55,6 +59,13 @@ export class ApplicationsService {
     });
 
     const saved = await this.applicationRepository.save(application);
+    await this.auditService.log({
+      entityType: 'MerchantApplication',
+      entityId: saved.id,
+      action: AuditAction.CREATED,
+      performedById: user.id,
+      newState: saved,
+    });
     return this.maskSensitiveFields(saved);
   }
 
@@ -184,6 +195,13 @@ export class ApplicationsService {
     application.submittedAt = new Date();
     const saved = await this.applicationRepository.save(application);
 
+    await this.auditService.log({
+      entityType: 'MerchantApplication',
+      entityId: saved.id,
+      action: AuditAction.SUBMITTED,
+      performedById: user.id,
+    });
+
     // bg job to evaluate risk asynchronously using BullMQ
     await this.riskQueue.add(
       'evaluate-merchant',
@@ -233,6 +251,14 @@ export class ApplicationsService {
       application.status = ApplicationStatus.UNDER_REVIEW;
     }
     const saved = await this.applicationRepository.save(application);
+
+    await this.auditService.log({
+      entityType: 'MerchantApplication',
+      entityId: saved.id,
+      action: AuditAction.ASSIGNED,
+      performedById: user.id,
+      metadata: { assignedReviewerId: reviewer.id },
+    });
     return this.maskSensitiveFields(saved);
   }
 
@@ -276,6 +302,15 @@ export class ApplicationsService {
         break;
     }
     const saved = await this.applicationRepository.save(application);
+
+    await this.auditService.log({
+      entityType: 'MerchantApplication',
+      entityId: saved.id,
+      action: AuditAction.DECISION_RECORDED,
+      performedById: user.id,
+      metadata: { decision: decisionDto.decision, notes: decisionDto.notes },
+    });
+
     return this.maskSensitiveFields(saved);
   }
 }

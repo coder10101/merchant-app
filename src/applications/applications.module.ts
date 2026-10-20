@@ -6,12 +6,14 @@ import { ApplicationsController } from './applications.controller';
 import { ApplicationsService } from './applications.service';
 import { AuthModule } from '../auth/auth.module';
 import { RiskModule } from '../risk/risk.module';
+import { AuditModule } from '../audit/audit.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([MerchantApplication, User]),
     AuthModule,
     RiskModule,
+    AuditModule,
   ],
   controllers: [ApplicationsController],
   providers: [ApplicationsService],
